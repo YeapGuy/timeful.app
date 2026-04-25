@@ -1,0 +1,61 @@
+name: timeful
+
+services:
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    image: ${TIMEFUL_IMAGE:-ghcr.io/schej-it/timeful}:${TIMEFUL_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ./server/.env
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      GIN_MODE: release
+      FRONTEND_DIST: /app/frontend/dist
+      LOG_FILE_PATH: /app/logs/timeful.log
+      TZ: ${TZ:-UTC}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "${TIMEFUL_BIND:-127.0.0.1}:${TIMEFUL_PORT:-3002}:3002"
+    volumes:
+      - server_logs:/app/logs
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3002/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mongo_data:
+  server_logs:
+
+networks:
+  internal:
+    driver: bridge
