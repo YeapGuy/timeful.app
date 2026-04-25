@@ -62,7 +62,15 @@ func main() {
 	}
 
 	// Init logfile
-	logFile, err := os.OpenFile("logs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFilePath := getLogFilePath()
+	logDir := filepath.Dir(logFilePath)
+	if logDir != "." {
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -215,6 +223,14 @@ func validateSessionSecret() {
 	if len(secret) < 32 {
 		logger.StdErr.Panicln("SESSION_SECRET must be at least 32 characters long")
 	}
+}
+
+func getLogFilePath() string {
+	logFilePath := os.Getenv("LOG_FILE_PATH")
+	if logFilePath == "" {
+		logFilePath = "logs.log"
+	}
+	return logFilePath
 }
 
 func noRouteHandler() gin.HandlerFunc {
