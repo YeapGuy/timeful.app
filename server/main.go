@@ -144,6 +144,10 @@ func main() {
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
+	apiRouter.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	apiRouter.GET("/public-config", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"googleClientId":    os.Getenv("CLIENT_ID"),
