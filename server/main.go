@@ -136,6 +136,13 @@ func main() {
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
+	apiRouter.GET("/public-config", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"googleClientId":    os.Getenv("CLIENT_ID"),
+			"microsoftClientId": os.Getenv("MICROSOFT_CLIENT_ID"),
+		})
+	})
+
 	frontendDist := os.Getenv("FRONTEND_DIST")
 	if frontendDist == "" {
 		frontendDist = "./frontend/dist"

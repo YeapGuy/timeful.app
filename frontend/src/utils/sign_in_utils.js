@@ -1,15 +1,62 @@
 import { calendarTypes } from "@/constants"
 import store from "@/store"
 
+let cachedPublicConfig = null
+
+const getPublicConfig = async () => {
+  if (cachedPublicConfig !== null) {
+    return cachedPublicConfig
+  }
+
+  try {
+    const response = await fetch("/api/public-config", {
+      credentials: "same-origin",
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to load public config: ${response.status}`)
+    }
+
+    cachedPublicConfig = await response.json()
+  } catch (error) {
+    cachedPublicConfig = {}
+  }
+
+  return cachedPublicConfig
+}
+
+const getGoogleClientId = async () => {
+  if (process.env.VUE_APP_GOOGLE_CLIENT_ID) {
+    return process.env.VUE_APP_GOOGLE_CLIENT_ID
+  }
+
+  const config = await getPublicConfig()
+  return config.googleClientId || ""
+}
+
+const getMicrosoftClientId = async () => {
+  if (process.env.VUE_APP_MICROSOFT_CLIENT_ID) {
+    return process.env.VUE_APP_MICROSOFT_CLIENT_ID
+  }
+
+  const config = await getPublicConfig()
+  return config.microsoftClientId || ""
+}
+
 /** Redirects user to the correct google sign in page */
-export const signInGoogle = ({
+export const signInGoogle = async ({
   state = {},
   selectAccount = false,
   requestCalendarPermission = false,
   requestContactsPermission = false,
   loginHint = "",
 }) => {
-  const clientId = process.env.VUE_APP_GOOGLE_CLIENT_ID
+  const clientId = await getGoogleClientId()
+  if (!clientId) {
+    window.alert("Google sign-in is not configured. Ask the server admin to set CLIENT_ID.")
+    return
+  }
+
   const redirectUri = `${window.location.origin}/auth`
 
   let scope = "openid email profile "
@@ -45,11 +92,16 @@ export const signInGoogle = ({
   window.location.href = url
 }
 
-export const signInOutlook = ({
+export const signInOutlook = async ({
   state = {},
   requestCalendarPermission = false,
 }) => {
-  const clientId = process.env.VUE_APP_MICROSOFT_CLIENT_ID
+  const clientId = await getMicrosoftClientId()
+  if (!clientId) {
+    window.alert("Outlook sign-in is not configured. Ask the server admin to set MICROSOFT_CLIENT_ID.")
+    return
+  }
+
   const tenant = "common"
   const redirectUri = encodeURIComponent(`${window.location.origin}/auth`)
 
